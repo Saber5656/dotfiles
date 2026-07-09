@@ -1,10 +1,18 @@
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-alias sail='[ -f sail ] && bash sail || bash vendor/bin/sail'
+sail() {
+  if [ -f sail ]; then
+    bash sail "$@"
+  else
+    bash vendor/bin/sail "$@"
+  fi
+}
 # ~/.zshrc
 
-eval "$(starship init zsh)"
+command -v starship >/dev/null 2>&1 && eval "$(starship init zsh)"
 export PATH="$HOME/.local/bin:$PATH"
 
 # Local/private shell additions are intentionally ignored.
-[ -f "$HOME/dev/dotfiles/zsh/local.zsh" ] && source "$HOME/dev/dotfiles/zsh/local.zsh"
+ZSHRC_DIR="${${(%):-%x}:A:h}"
+[ -f "$ZSHRC_DIR/local.zsh" ] && source "$ZSHRC_DIR/local.zsh"
+unset ZSHRC_DIR

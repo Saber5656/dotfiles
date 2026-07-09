@@ -3,7 +3,7 @@
 ## 最重要ルール
 
 - 全ての実施内容、知識、判断理由、調査結果、レビュー結果、引き継ぎ事項は、人間ユーザーと AI エージェントが再利用できるように必ずドキュメント化する
-- 共有知識の正本は `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Agents-Vault` とする
+- 共有知識の正本は `AGENTS_VAULT_ROOT` で指定された Vault とする
 - Vault に記録されていない知識は、共有済みの事実として扱わない
 - タスク完了条件には、成果物の完成だけでなく Vault 更新の完了を含める
 - 完了を宣言する前に、未コミット差分がないこと、依頼された全項目を実施したこと、指定された実行主体・手段が守られたことを自己検査する。タイムアウトや未達成のまま「完了」と報告しない
@@ -13,7 +13,7 @@
 
 ## 共有知識基盤
 
-- 共有知識基盤のルートは `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Agents-Vault` とする
+- 共有知識基盤のルートは `AGENTS_VAULT_ROOT` とする
 - `.obsidian/` 配下は、ユーザーが明示的に依頼したとき以外は変更しない
 
 | フォルダ | 用途 |
@@ -82,5 +82,5 @@
 | 確認したい内容 | 正本 |
 |---|---|
 | 全エージェント共通ルール | `~/dev/dotfiles/COMMON-AGENTS.md`（`~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md` は symlink） |
-| 作業 context / task / evidence / 引き継ぎ | `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Agents-Vault` |
+| 作業 context / task / evidence / 引き継ぎ | `$AGENTS_VAULT_ROOT` |
 | utility skill | `~/dev/skills` |
