@@ -1,0 +1,29 @@
+.DS_Store
+
+# claude hooks: transitional Saihai/ITB runtime
+claude/hooks/
+
+# local Codex settings
+.codex/config.toml
+codex/config.toml
+codex/hooks.json
+codex/hooks/
+codex/bin/archive-shutdown
+
+# generated editor state
+nvim/lazyvim.json
+
+# generated Claude plugin state
+claude/plugins/installed_plugins.json
+claude/plugins/known_marketplaces.json
+
+# duplicate/legacy agent base rules
+agents/agents.md
+agents/base/common.md
+claude/team-config.md
+
+# local/private shell additions
+zsh/local.zsh
+
+# local Claude project settings
+.claude/settings.json
