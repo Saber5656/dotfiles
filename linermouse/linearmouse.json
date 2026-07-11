@@ -1,0 +1,31 @@
+{
+  "$schema" : "https:\/\/schema.linearmouse.app\/0.10.2",
+  "schemes" : [
+    {
+      "if" : {
+        "device" : {
+          "category" : "mouse",
+          "productID" : "0xb03e",
+          "productName" : "MX Ergo S",
+          "vendorID" : "0x46d"
+        }
+      },
+      "pointer" : {
+        "disableAcceleration" : false,
+        "speed" : 0.178
+      },
+      "scrolling" : {
+        "acceleration" : 0,
+        "modifiers" : {
+          "vertical" : {
+            "shift" : {
+              "type" : "preventDefault"
+            }
+          }
+        },
+        "reverse" : true,
+        "speed" : 80.9
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+sail() {
+  if [ -f sail ]; then
+    bash sail "$@"
+  else
+    bash vendor/bin/sail "$@"
+  fi
+}
+# ~/.zshrc
+
+command -v starship >/dev/null 2>&1 && eval "$(starship init zsh)"
+export PATH="$HOME/.local/bin:$PATH"
+
+# Local/private shell additions are intentionally ignored.
+ZSHRC_DIR="${${(%):-%x}:A:h}"
+[ -f "$ZSHRC_DIR/local.zsh" ] && source "$ZSHRC_DIR/local.zsh"
+unset ZSHRC_DIR
