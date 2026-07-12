@@ -26,13 +26,15 @@
 
 - 完了したタスクの記録は `01-Projects` 直下に放置せず `01-Projects/00_Archive` へ移動し、アクティブな作業と明確に分離する
 
-## Bootstrap 例外（fail-closed）
+## 暫定 Bootstrap 例外（fail-closed）
 
-- `AGENTS_VAULT_ROOT` が未設定、または正本として使用する Vault がまだ存在しない fresh bootstrap に限り、Vault の作成、パス設定、書き込み確認に必要な最小限の bootstrap 作業だけを例外として許可する。通常の調査・設計・実装・リポジトリ変更・公開作業へ進んではならない
-- `AGENTS_VAULT_ROOT` が設定済みで正本 Vault も存在するのに読み書きできない場合は bootstrap 例外を適用しない。別 Vault の作成やパスの付け替えを行わず停止し、人間または環境側の復旧を求める
+- この節は Saihai オーケストレーター完成までの暫定ローカルハーネスとし、完成後はオーケストレーターの正式な起動・復旧フローへ置き換える
+- `AGENTS_VAULT_ROOT` が未設定、または指定先に Vault が存在しない場合は、既存の正本 Vault がほかに存在しないことと新しい正本パスを人間が確認した fresh bootstrap に限り、Vault の作成、パス設定、書き込み確認に必要な最小限の作業だけを例外として許可する。通常の調査・設計・実装・リポジトリ変更・公開作業へ進んではならない
+- 既存の正本 Vault の有無を確認できない場合、または正本 Vault が存在するのに読み書きできない場合は bootstrap 例外を適用しない。別 Vault の作成やパスの付け替えを行わず停止し、人間または環境側の復旧を求める
 - Vault が書き込み可能になった直後に bootstrap 作業自体を task として登録し、それまでの操作、判断理由、検証結果を evidence として追記してから後続作業へ進む
 - `~/dev/Saihai/organization/roles/` が存在しない、または必要な role 定義を読み取れない場合は、その role 定義のインストールまたは復旧に必要な最小限の bootstrap 作業だけを許可する。汎用 reviewer への fallback は行わず、role 定義が利用可能になるまで通常作業を開始・完了・公開してはならない
-- Saihai role bootstrap は Vault の task record を先に必要とする。Vault も利用できない場合は、上記の Vault bootstrap、task 登録、Saihai role bootstrap の順で実施する
+- Saihai role bootstrap は Vault の task record を先に必要とし、その record に人間が承認した信頼済み取得元と期待する immutable commit SHA を固定する。取得後は実際の取得元と checkout した commit SHA が record の固定値と一致することを検証し、情報不足や不一致時は復旧と通常作業を停止して汎用 reviewer へ fallback しない
+- Vault も利用できない場合は、上記の Vault bootstrap、task 登録、Saihai role bootstrap の順で実施する。いずれの bootstrap も前提確認や整合性検証に失敗した場合は停止する
 
 ## 言語
 
@@ -75,7 +77,7 @@
 ## 運用
 
 - ここには全タスク共通の起動ルールだけを置く
-- 全ての通常作業は、着手前に Agents-Vault へ task として登録する。task record には少なくとも目的、scope、完了条件を記録し、着手後は作業記録、判断理由、成果物、検証結果、レビュー証跡、引き継ぎ事項を同じ task record に追記する。事前登録の唯一の例外は「Bootstrap 例外（fail-closed）」に定めた Vault 初期化であり、Vault が利用可能になった直後に遡及記録する
+- 全ての通常作業は、着手前に Agents-Vault へ task として登録する。task record には少なくとも目的、scope、完了条件を記録し、着手後は作業記録、判断理由、成果物、検証結果、レビュー証跡、引き継ぎ事項を同じ task record に追記する。事前登録の唯一の例外は「暫定 Bootstrap 例外（fail-closed）」に定めた Vault 初期化であり、Vault が利用可能になった直後に遡及記録する
 - 承認済みタスクの範囲内では、中間報告のために停止せず最後まで自律的に進める（HOTL: Human on the loop）。自動リトライ・反復は上限（既定5回）付きで許可する
 - 判断に迷うリスク分類は常に厳格側に倒す。制約を緩和する方向の変更を自己判断で行わない
 - 依頼のスコープを厳守する。レビュー・調査・列挙の依頼で無断修正を行わない。「全て」「まとめて」の対象範囲を勝手に狭く解釈せず、曖昧な場合は選択肢付きで確認する
