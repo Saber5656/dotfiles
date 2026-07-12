@@ -26,6 +26,16 @@
 
 - 完了したタスクの記録は `01-Projects` 直下に放置せず `01-Projects/00_Archive` へ移動し、アクティブな作業と明確に分離する
 
+## 暫定 Bootstrap 例外（fail-closed）
+
+- この節は Saihai オーケストレーター完成までの暫定ローカルハーネスとし、完成後はオーケストレーターの正式な起動・復旧フローへ置き換える
+- `AGENTS_VAULT_ROOT` が未設定、または指定先に Vault が存在しない場合は、既存の正本 Vault がほかに存在しないことと新しい正本パスを人間が確認した fresh bootstrap に限り、Vault の作成、パス設定、書き込み確認に必要な最小限の作業だけを例外として許可する。通常の調査・設計・実装・リポジトリ変更・公開作業へ進んではならない
+- 既存の正本 Vault の有無を確認できない場合、または正本 Vault が存在するのに読み書きできない場合は bootstrap 例外を適用しない。別 Vault の作成やパスの付け替えを行わず停止し、人間または環境側の復旧を求める
+- Vault が書き込み可能になった直後に bootstrap 作業自体を task として登録し、それまでの操作、判断理由、検証結果を evidence として追記してから後続作業へ進む
+- `~/dev/Saihai/organization/roles/` が存在しない、または必要な role 定義を読み取れない場合は、その role 定義のインストールまたは復旧に必要な最小限の bootstrap 作業だけを許可する。汎用 reviewer への fallback は行わず、role 定義が利用可能になるまで通常作業を開始・完了・公開してはならない
+- Saihai role bootstrap は Vault の task record を先に必要とし、その record に人間が承認した信頼済み取得元と期待する immutable commit SHA を固定する。取得後は実際の取得元と checkout した commit SHA が record の固定値と一致することを検証し、情報不足や不一致時は復旧と通常作業を停止して汎用 reviewer へ fallback しない
+- Vault も利用できない場合は、上記の Vault bootstrap、task 登録、Saihai role bootstrap の順で実施する。いずれの bootstrap も前提確認や整合性検証に失敗した場合は停止する
+
 ## 言語
 
 - 日本語で応答する（コード・コマンド・技術用語はそのまま英語可）
@@ -47,16 +57,18 @@
 
 ## 品質担保（レビューと evidence）
 
-- 通常の実装・設計・調査・公開作業は、完了前に別エージェントによるレビューまたは PR レビュー（codex review / CodeRabbit など）を受ける
+- 作業を実施したら、完了または PR 公開の前に、Saihai リポジトリの `organization/roles/` から成果物の領域とリスクに適した role を選び、その定義に従う別エージェントにレビューを依頼する。必要な専門領域が複数ある場合は各 role に委譲する
+- 上記の role review を担当する独立 reviewer の review-only handoff は、レビュー evidence を依頼元へ返した時点で reviewer の作業として完了とする。依頼元は元 task の完了または PR 公開前に、その evidence を Vault の task record へ記録する。その review-only handoff 自体に追加の role review を要求せず、再帰的な review chain を作らない。reviewer が実装・修正まで行った場合はこの例外の対象外とする
 - レビュー指摘への対応は、修正方針をユーザーと合意してから実装する
-- 主要な判断・検証結果は evidence（実行ログ、リンク、差分、レビュー結果）付きで Vault の task record に残す
-- 軽微な定型作業（コミット、プル、バージョン確認など）は軽量な記録のみで直接実行してよい。軽微な作業に重いフローを適用しない
+- 主要な判断・検証結果と、選択した role、レビュー結果、指摘対応は evidence（実行ログ、リンク、差分など）付きで Vault の task record に残す
+- 軽微な定型作業（コミット、プル、バージョン確認など）は軽量な記録で直接実行してよいが、着手前の task 登録、完了前の role review、evidence 記録は省略しない。軽微な作業にそれ以外の重いフローを適用しない
 
 ## Git / リポジトリ運用
 
 - 新規ローカルリポジトリは `~/dev` 直下にリポジトリ名と同名のディレクトリで作成する
-- 1 task = 1 working branch / worktree とする。worktree の作成・切替直後は `pwd` と `git status` で作業位置を確認してから変更を加える
-- 作業終了時に未コミット差分を残さない。差分が残った場合は関心事ごとに分割してコミットする（「コミットのタスクがない」を理由に拒否しない）
+- task-specific worktree / task-specific chat は PR を成果物とする task に限って作成し、1 task = 1 working branch / worktree とする。作成・切替直後は `pwd` と `git status` で作業位置を確認してから変更を加える
+- task-specific worktree / task-specific chat を作成した作業は、必ず PR 作成を成果物に含める。PR にしない作業ではこれらを作成しない
+- コミットは独立して説明・レビュー・revert できる最小の意味単位に分割し、異なる関心事を同一コミットに混在させない。作業終了時に未コミット差分を残さない
 - default branch（main）への直 push は禁止（ruleset で保護済み）。変更は PR 経由とし、codex review / CodeRabbit などのレビューを受けてからマージする
 - force push は禁止
 - main への merge とリリースは別の gate として扱う（merge ≠ release）
@@ -65,7 +77,7 @@
 ## 運用
 
 - ここには全タスク共通の起動ルールだけを置く
-- 全ての作業は task として扱い、作業記録、判断理由、成果物、検証結果、引き継ぎ事項を Agents-Vault に記録する
+- 全ての通常作業は、着手前に Agents-Vault へ task として登録する。task record には少なくとも目的、scope、完了条件を記録し、着手後は作業記録、判断理由、成果物、検証結果、レビュー証跡、引き継ぎ事項を同じ task record に追記する。事前登録の唯一の例外は「暫定 Bootstrap 例外（fail-closed）」に定めた Vault 初期化であり、Vault が利用可能になった直後に遡及記録する
 - 承認済みタスクの範囲内では、中間報告のために停止せず最後まで自律的に進める（HOTL: Human on the loop）。自動リトライ・反復は上限（既定5回）付きで許可する
 - 判断に迷うリスク分類は常に厳格側に倒す。制約を緩和する方向の変更を自己判断で行わない
 - 依頼のスコープを厳守する。レビュー・調査・列挙の依頼で無断修正を行わない。「全て」「まとめて」の対象範囲を勝手に狭く解釈せず、曖昧な場合は選択肢付きで確認する
@@ -83,4 +95,5 @@
 |---|---|
 | 全エージェント共通ルール | `~/dev/dotfiles/COMMON-AGENTS.md`（`~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md` は symlink） |
 | 作業 context / task / evidence / 引き継ぎ | `$AGENTS_VAULT_ROOT` |
+| 組織 role 定義 | `~/dev/Saihai/organization/roles/` |
 | utility skill | `~/dev/skills` |
