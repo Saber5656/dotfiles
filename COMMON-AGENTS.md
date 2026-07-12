@@ -47,16 +47,17 @@
 
 ## 品質担保（レビューと evidence）
 
-- 通常の実装・設計・調査・公開作業は、完了前に別エージェントによるレビューまたは PR レビュー（codex review / CodeRabbit など）を受ける
+- 作業を実施したら、完了または PR 公開の前に、Saihai リポジトリの `organization/roles/` から成果物の領域とリスクに適した role を選び、その定義に従う別エージェントにレビューを依頼する。必要な専門領域が複数ある場合は各 role に委譲する
 - レビュー指摘への対応は、修正方針をユーザーと合意してから実装する
-- 主要な判断・検証結果は evidence（実行ログ、リンク、差分、レビュー結果）付きで Vault の task record に残す
-- 軽微な定型作業（コミット、プル、バージョン確認など）は軽量な記録のみで直接実行してよい。軽微な作業に重いフローを適用しない
+- 主要な判断・検証結果と、選択した role、レビュー結果、指摘対応は evidence（実行ログ、リンク、差分など）付きで Vault の task record に残す
+- 軽微な定型作業（コミット、プル、バージョン確認など）は軽量な記録で直接実行してよいが、着手前の task 登録、完了前の role review、evidence 記録は省略しない。軽微な作業にそれ以外の重いフローを適用しない
 
 ## Git / リポジトリ運用
 
 - 新規ローカルリポジトリは `~/dev` 直下にリポジトリ名と同名のディレクトリで作成する
-- 1 task = 1 working branch / worktree とする。worktree の作成・切替直後は `pwd` と `git status` で作業位置を確認してから変更を加える
-- 作業終了時に未コミット差分を残さない。差分が残った場合は関心事ごとに分割してコミットする（「コミットのタスクがない」を理由に拒否しない）
+- task-specific worktree / task-specific chat は PR を成果物とする task に限って作成し、1 task = 1 working branch / worktree とする。作成・切替直後は `pwd` と `git status` で作業位置を確認してから変更を加える
+- task-specific worktree / task-specific chat を作成した作業は、必ず PR 作成を成果物に含める。PR にしない作業ではこれらを作成しない
+- コミットは独立して説明・レビュー・revert できる最小の意味単位に分割し、異なる関心事を同一コミットに混在させない。作業終了時に未コミット差分を残さない
 - default branch（main）への直 push は禁止（ruleset で保護済み）。変更は PR 経由とし、codex review / CodeRabbit などのレビューを受けてからマージする
 - force push は禁止
 - main への merge とリリースは別の gate として扱う（merge ≠ release）
@@ -65,7 +66,7 @@
 ## 運用
 
 - ここには全タスク共通の起動ルールだけを置く
-- 全ての作業は task として扱い、作業記録、判断理由、成果物、検証結果、引き継ぎ事項を Agents-Vault に記録する
+- 全ての作業は、着手前に Agents-Vault へ task として登録する。task record には少なくとも目的、scope、完了条件を記録し、着手後は作業記録、判断理由、成果物、検証結果、レビュー証跡、引き継ぎ事項を同じ task record に追記する
 - 承認済みタスクの範囲内では、中間報告のために停止せず最後まで自律的に進める（HOTL: Human on the loop）。自動リトライ・反復は上限（既定5回）付きで許可する
 - 判断に迷うリスク分類は常に厳格側に倒す。制約を緩和する方向の変更を自己判断で行わない
 - 依頼のスコープを厳守する。レビュー・調査・列挙の依頼で無断修正を行わない。「全て」「まとめて」の対象範囲を勝手に狭く解釈せず、曖昧な場合は選択肢付きで確認する
@@ -83,4 +84,5 @@
 |---|---|
 | 全エージェント共通ルール | `~/dev/dotfiles/COMMON-AGENTS.md`（`~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md` は symlink） |
 | 作業 context / task / evidence / 引き継ぎ | `$AGENTS_VAULT_ROOT` |
+| 組織 role 定義 | `~/dev/Saihai/organization/roles/` |
 | utility skill | `~/dev/skills` |
