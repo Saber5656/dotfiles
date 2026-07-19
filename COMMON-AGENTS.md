@@ -29,7 +29,8 @@
 ## 暫定 Bootstrap 例外（fail-closed）
 
 - この節は Saihai オーケストレーター完成までの暫定ローカルハーネスとし、完成後はオーケストレーターの正式な起動・復旧フローへ置き換える
-- `AGENTS_VAULT_ROOT` が未設定、または指定先に Vault が存在しない場合は、既存の正本 Vault がほかに存在しないことと新しい正本パスを人間が確認した fresh bootstrap に限り、Vault の作成、パス設定、書き込み確認に必要な最小限の作業だけを例外として許可する。通常の調査・設計・実装・リポジトリ変更・公開作業へ進んではならない
+- `AGENTS_VAULT_ROOT` はシェル環境変数から解決しない。Saihai primary checkout の `~/dev/Saihai/directory-path.env`（directory catalog）を唯一の source とし、loader の解決入力に空の mapping `env = {}` を渡して `directory_paths.load_environment(checkout_root=Path("~/dev/Saihai").expanduser(), environ=env, require_catalog=True)` を実行する。返却値の `status=loaded` を確認し、`env["AGENTS_VAULT_ROOT"]` を作業プロセスの環境へ反映してから、Vault の read/write 検証が成功したことを確認する
+- `directory-path.env` が存在しない場合だけ、既存の正本 Vault がほかに存在しないことと新しい正本パスを人間が確認し、人間が同ファイルを作成・更新してから fresh bootstrap を再実行する。catalog の読込・parse・検証に失敗した場合は bootstrap へ進まず、通常の調査・設計・実装・リポジトリ変更・公開作業も停止する
 - 既存の正本 Vault の有無を確認できない場合、または正本 Vault が存在するのに読み書きできない場合は bootstrap 例外を適用しない。別 Vault の作成やパスの付け替えを行わず停止し、人間または環境側の復旧を求める
 - Vault が書き込み可能になった直後に bootstrap 作業自体を task として登録し、それまでの操作、判断理由、検証結果を evidence として追記してから後続作業へ進む
 - `~/dev/Saihai/organization/roles/` が存在しない、または必要な role 定義を読み取れない場合は、その role 定義のインストールまたは復旧に必要な最小限の bootstrap 作業だけを許可する。汎用 reviewer への fallback は行わず、role 定義が利用可能になるまで通常作業を開始・完了・公開してはならない
