@@ -29,7 +29,7 @@
 ## 暫定 Bootstrap 例外（fail-closed）
 
 - この節は Saihai オーケストレーター完成までの暫定ローカルハーネスとし、完成後はオーケストレーターの正式な起動・復旧フローへ置き換える
-- `AGENTS_VAULT_ROOT` はシェル環境変数から解決しない。Saihai primary checkout の `~/dev/Saihai/directory-path.env`（directory catalog）を唯一の source とし、loader の解決入力に空の mapping `env = {}` を渡して `directory_paths.load_environment(checkout_root=Path("~/dev/Saihai").expanduser(), environ=env, require_catalog=True)` を実行する。返却値の `status=loaded` を確認し、`env["AGENTS_VAULT_ROOT"]` を作業プロセスの環境へ反映してから、Vault の read/write 検証が成功したことを確認する
+- この文書で使用するパス変数はシェル環境変数から解決しない。Saihai primary checkout の `~/dev/Saihai/directory-path.env`（directory catalog）を唯一の source とし、loader の解決入力に空の mapping `env = {}` を渡して `directory_paths.load_environment(checkout_root=Path("~/dev/Saihai").expanduser(), environ=env, require_catalog=True)` を実行する。返却値の `status=loaded` を確認し、catalog から得た各パス変数を作業プロセスの環境へ反映してから、`AGENTS_VAULT_ROOT` の read/write 検証が成功したことを確認する
 - `directory-path.env` が存在しない場合だけ、既存の正本 Vault がほかに存在しないことと新しい正本パスを人間が確認し、人間が同ファイルを作成・更新してから fresh bootstrap を再実行する。catalog の読込・parse・検証に失敗した場合は bootstrap へ進まず、通常の調査・設計・実装・リポジトリ変更・公開作業も停止する
 - 既存の正本 Vault の有無を確認できない場合、または正本 Vault が存在するのに読み書きできない場合は bootstrap 例外を適用しない。別 Vault の作成やパスの付け替えを行わず停止し、人間または環境側の復旧を求める
 - Vault が書き込み可能になった直後に bootstrap 作業自体を task として登録し、それまでの操作、判断理由、検証結果を evidence として追記してから後続作業へ進む
@@ -70,7 +70,7 @@
   5. 指摘が解消されレビューを通過した場合に限り、その thread の変更を commit する
 - `thread` は task を構成する最小の実行・レビュー単位とし、独立した目的とレビュー可能な成果物を持たせる。process の成果物は、その task に属する複数 thread の成果物を統合したものとする
 - `DEV_ROOT` 配下のリポジトリに変更が生じる作業は、PR を process の成果物に含める
-- 作業を中断してユーザーに質問または確認すべき事項がない場合は、レビュー通過後の commit、push、PR 作成まで自律的に進め、中間報告のために停止しない
+- PR を成果物に含めることが必須または承認済みの process では、作業を中断してユーザーに質問または確認すべき事項がない場合、レビュー通過後の commit、push、PR 作成まで自律的に進め、中間報告のために停止しない
 
 ## 品質担保（レビューと evidence）
 
@@ -85,7 +85,7 @@
 - 新規ローカルリポジトリは `~/dev` 直下にリポジトリ名と同名のディレクトリで作成する
 - task-specific worktree / task-specific chat は PR を成果物とする task に限って作成し、1 task = 1 working branch / worktree とする。作成・切替直後は `pwd` と `git status` で作業位置を確認してから変更を加える
 - task-specific worktree / task-specific chat を作成した作業は、必ず PR 作成を成果物に含める。PR にしない作業ではこれらを作成しない
-- `AGENTS_VAULT_ROOT` と `USER_VAULT_ROOT` 配下の変更は task-specific worktree を作成せず、それぞれ main branch の working tree を直接更新する。この例外は両 Vault 配下の変更に限り、その他のリポジトリや default branch への直 push を許可するものではない
+- `AGENTS_VAULT_ROOT` と `USER_VAULT_ROOT` 配下の変更は task-specific worktree や PR を作成せず、それぞれ main branch の working tree を直接更新する。Git 管理されている場合は main に直接 commit / push する。この例外は両 Vault 配下の変更に限り、その他のリポジトリや default branch への直 push を許可するものではない
 - コミットは独立して説明・レビュー・revert できる最小の意味単位に分割し、異なる関心事を同一コミットに混在させない。作業終了時に未コミット差分を残さない
 - default branch（main）への直 push は禁止（ruleset で保護済み）。変更は PR 経由とし、codex review / CodeRabbit などのレビューを受けてからマージする
 - force push は禁止
