@@ -88,7 +88,10 @@
 - `AGENTS_VAULT_ROOT` と `USER_VAULT_ROOT` 配下の変更は task-specific worktree や PR を作成せず、それぞれ main branch の working tree を直接更新する。Git 管理されている場合は main に直接 commit / push する。この例外は両 Vault 配下の変更に限り、その他のリポジトリや default branch への直 push を許可するものではない
 - コミットは独立して説明・レビュー・revert できる最小の意味単位に分割し、異なる関心事を同一コミットに混在させない。作業終了時に未コミット差分を残さない
 - PR のレビュー指摘を修正する場合は、指摘（review thread）ごとにコミットを分け、複数の指摘を同一コミットに混在させない
+- 同一の独立した修正が複数の review thread を不可分に解消する場合に限り、前項の例外として一つのコミットにまとめてもよい。この場合は、対象の thread ID と分割できない理由を task record と commit message に記録する
 - タスクを Issue やサブタスクなどに細分化した場合は、細分化したタスクごとにコミットを分け、複数タスクの変更を同一コミットに混在させない
+- 複数タスクに共通する prerequisite は、独立して説明・検証・revert できるなら独立したコミットにし、依存順を task record に記録する。個別コミットが build 不能または revert 不能になる不可分な依存タスクに限り、前項の例外として一つのコミットにまとめてもよい。この場合は、対象タスクと依存理由を task record と commit message に記録する
+- 各コミットは、task ID、対応する review thread がある場合はその thread ID、検証結果、commit SHA を task record に必ず記録する。必要に応じて、push 後の review reply に commit SHA を記載して追跡可能にする
 - default branch（main）への直 push は禁止（ruleset で保護済み）。変更は PR 経由とし、codex review / CodeRabbit などのレビューを受けてからマージする
 - force push は禁止
 - main への merge とリリースは別の gate として扱う（merge ≠ release）
