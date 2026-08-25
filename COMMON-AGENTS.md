@@ -80,6 +80,18 @@
 - 主要な判断・検証結果と、選択した role、レビュー結果、指摘対応は evidence（実行ログ、リンク、差分など）付きで Vault の task record に残す
 - 軽微な定型作業（コミット、プル、バージョン確認など）も `thread` の実行ループ、着手前の task 登録、完了前の role review、evidence 記録を省略しない。記録と handoff は、必要な証跡を保ったまま作業規模に応じて軽量化してよい
 
+## 検証・レビュー・マージの不変条件（fail-closed）
+
+- source、test、build、CI 設定を追加・変更した thread は、commit または PR 公開前に、変更へ対応する focused validation と repository 所定の full validation を実行する。対象 SHA、実行コマンド、開始・終了時刻、終了状態、結果への参照を task record に記録し、未実行・失敗・不明を成功として扱わない
+- GitHub PR の `mergeable` は競合可否の参考情報に限り、merge authorization として扱わない。`github_mergeable` と、全 gate を満たす `policy_merge_ready` は別の状態として管理する
+- merge 前に、GitHub ruleset / branch protection または人間が承認した versioned repository policy を正本として required check inventory を確定する。必要な権限で正本を取得できない、正本を特定できない、inventory の完全性を証明できない場合は fail closed し、PR 上で観測できる check から推測しない
+- expected repository、PR、current head SHA、current base SHA、および定義されている場合は merge candidate SHA を固定し、全 required check の状態を merge 直前に再取得する。対象 identity と一致する check がすべて terminal success の場合だけ通過とし、`missing`、`pending`、`queued`、`skipped`、`cancelled`、`timed_out`、`failure`、`stale`、`unknown` は blocker とする
+- repository policy で設定された各 external reviewer は current head に対する terminal result を返していなければならない。review response が 0 件であること、review thread が存在しないこと、既存 thread の unresolved count が 0 件であること、単なる poll timeout、エージェント自身の QA コメントは、いずれもそれ単独では review 完了の証明にならない
+- review 後に head SHA が変わった場合は、その head に結び付く review と check evidence を失効させ、current head の再 review または policy が明示する current-head verification を要求する。base、merge candidate、settings、reviewer policy が変わった場合も readiness evidence を再計算する
+- 前項の external reviewer とは別に、本組織の mandatory role review として数えられるのは、Saihai の公開 facade から role 定義に従って dispatch され、provider、effective model、request、session、結果の integrity evidence が Vault に保存された review だけとする。direct generic subagent や provenance を確認できない review は advisory に限定する
+- required check または reviewer の waiver はエージェントが自己判断で作成してはならない。人間が repository、PR、head SHA、対象 gate / reviewer / check、理由、有効期限を特定し、承認 evidence を残した場合だけ、その厳密な対象へ適用する。暗黙の waiver、repo 横断 waiver、head 未指定、期限なし、timeout の自動承認を禁止する
+- merge 後は、実際の merge SHA または merge-queue SHA に対する repository 所定の integrated validation が terminal success になるまで、同一 repository の次の merge を行わない。失敗、取消、timeout、結果不明の場合は merge wave を停止し、corrective task を登録してから復旧する
+
 ## Git / リポジトリ運用
 
 - 新規ローカルリポジトリは `~/dev` 直下にリポジトリ名と同名のディレクトリで作成する
