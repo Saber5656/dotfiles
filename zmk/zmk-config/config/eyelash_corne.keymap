@@ -87,10 +87,10 @@
         default_layer {
             display-name = "QWERTY";
             bindings = <
-&kp LBRC           &kp Q  &hml LC(LSHFT) W      &hml LA(LCTRL) E      &kp R                &kp T                  &kp UP                &kp Y                 &kp U                &hmr RA(RCTRL) I       &hmr RC(RSHFT) O       &kp P       &kp RBRC
-&hml LCTRL ESC     &hml LCTRL A  &kp S          &hml LALT D           &hml LGUI F          &kp G         &kp LEFT  &kp ENTER  &kp RIGHT  &kp H                 &hmr RGUI J           &hmr RALT K            &hmr RCTRL L           &kp SEMI    &kp MINUS
+            &kp ESC   &kp Q   &hml LC(LSHFT) W   &hml LA(LCTRL) E   &kp R   &kp T   &kp UP   &kp Y   &kp U   &hmr RA(RCTRL) I   &hmr RC(RSHFT) O   &kp P   &kp SEMI
+            &kp LANG2   &hml LCTRL A   &kp S   &hml LALT D   &hml LGUI F   &kp G   &kp LEFT   &kp ENTER   &kp RIGHT   &kp H   &hmr RGUI J   &hmr RALT K   &hmr RCTRL L   &kp MINUS   &kp LANG1
 &kp LEFT           &kp Z  &hml LC(LGUI) X       &hml LA(LGUI) C       &hml LG(LSHFT) V     &kp B         &kp SPACE            &kp DOWN              &kp N                 &hmr LG(LSHFT) M      &hmr RA(LGUI) COMMA    &hmr RC(LGUI) DOT      &kp FSLH    &kp RIGHT
-                                  &mt LGUI TAB        &mt LSHFT SPACE     &lt 1 BSPC                                                  &lt 2 BSPC         &mt RSHFT RET         &mt RCTRL TAB
+                                  &mt LGUI TAB        &mt LSHIFT SPACE      &lt 1 BSPC                                                  &lt 2 BSPC         &mt RSHIFT RET        &mt RGUI TAB
             >;
 
             sensor-bindings = <&inc_dec_kp C_VOLUME_UP C_VOL_DN>;
@@ -99,10 +99,10 @@
         lower_layer {
             display-name = "NUMBER";
             bindings = <
-&none      &kp F9      &kp F10  &kp F11  &kp F12  &kp UP                                         &mmv MOVE_UP                     &kp KP_PLUS         &kp N7                &kp N8               &kp N9               &kp PRCNT  &kp FSLH
-&kp TAB    &kp F5      &kp F6   &kp F7   &kp F8   &kp DOWN                        &mmv MOVE_LEFT  &mkp LCLK       &mmv MOVE_RIGHT  &kp KP_MULTIPLY      &kp N4                &kp N5               &kp N6               &kp SEMI   &kp MINUS
+            &none   &kp F9   &kp F10   &kp F11   &kp F12   &kp UP   &mmv MOVE_UP   &kp KP_PLUS   &kp N7   &kp N8   &kp N9   &kp MINUS   &kp COLON
+            &kp TAB   &kp F5   &kp F6   &kp F7   &kp F8   &kp DOWN   &mmv MOVE_LEFT   &mkp LCLK   &mmv MOVE_RIGHT   &kp KP_MULTIPLY   &kp N4   &kp N5   &kp N6   &kp FSLH   &kp BSPC
 &kp LEFT   &kp F1      &kp F2   &kp F3   &kp F4   &kp RIGHT  &kp C_MUTE                          &mmv MOVE_DOWN                   &kp CARET           &kp N1                &kp N2               &kp N3               &kp DOT    &kp KP_EQUAL
-                                    &none       &none        &lt 3 BSPC                                                                    &lt 3 DEL          &mt RSHFT RET        &kp N0
+            &none   &none   &lt 3 BSPC   &lt 3 DEL   &kp N0   &hmr ENTER RSHFT
             >;
 
             sensor-bindings = <&scroll_encoder>;
@@ -114,7 +114,7 @@
 &kp HOME    &kp EXCL  &kp QMARK  &kp AMPS   &kp PIPE  &kp BSLH                              &mmv MOVE_UP                     &kp FSLH          &kp KP_EQUAL          &kp ASTRK             &kp PLUS             &kp PRCNT     &kp END
 &kp CARET   &kp HASH  &kp GRAVE  &kp DQT    &kp SQT   &kp TILDE          &mmv MOVE_LEFT  &mkp LCLK       &mmv MOVE_RIGHT  &kp LEFT            &kp DOWN              &kp UP                &kp RIGHT            &kp COLON     &kp UNDER
 &kp PG_UP   &kp N0    &kp LT     &kp LBKT   &kp LBRC  &kp LPAR    &trans                     &mmv MOVE_DOWN                   &kp RPAR           &kp RBRC              &kp RBKT              &kp GT                &kp DLLR             &kp PG_DN
-                                     &none      &kp LANG2  &kp LANG1                                                           &none               &none                 &kp PG_UP
+                                     &bt BT_SEL 0  &bt BT_SEL 1  &bt BT_SEL 2                                                   &none               &none                 &kp PG_UP
             >;
 
             sensor-bindings = <&scroll_encoder>;
