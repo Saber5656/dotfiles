@@ -62,6 +62,72 @@ class OwnershipContractTests(unittest.TestCase):
                 self.assertIn(clause, POLICY)
 
 
+class CompletionStateContractTests(unittest.TestCase):
+    def test_every_completion_stage_has_its_own_evidence_condition(self):
+        rows = {
+            "artifact": "承認済み scope の全成果物と受け入れ条件",
+            "validation": "対象 identity に一致する focused/full validation",
+            "review": "対象 identity に一致する必須の独立 review",
+            "evidence": "canonical Vault への耐久保存と read-back",
+            "commit": "task-owned 差分と immutable commit の一致",
+            "publication": "remote head の一致と必要な PR の実作成",
+            "merge": "有効な merge gate と実 merge SHA の統合後検証",
+            "release": "別途許可された release gate と配布先の実結果",
+        }
+        for stage, evidence in rows.items():
+            with self.subTest(stage=stage):
+                matches = [line for line in POLICY.splitlines() if line.startswith("| `" + stage + "` |")]
+                self.assertEqual(1, len(matches))
+                self.assertIn(evidence, matches[0])
+
+    def test_pending_review_or_evidence_blocks_parent_completion(self):
+        for clause in (
+            "必須段階の一つでも pending・failed・unknown なら task complete にしない",
+            "review 待ち・evidence 保存待ちを artifact 完成で代替しない",
+            "PR 作成済みを merge 済み、merge 済みを release 済みと扱わない",
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, POLICY)
+
+    def test_not_required_needs_scope_and_no_waiver_inference(self):
+        self.assertIn("not_required は承認済み scope と適用 policy の根拠", POLICY)
+        self.assertIn("必須 gate を not_required に変更してはならない", POLICY)
+        self.assertIn("後工程を省略する許可や未達要件の除外を暗黙に導かない", POLICY)
+
+    def test_review_only_transport_terminal_is_not_review_or_parent_success(self):
+        for clause in (
+            "review-only の返却処理の終端と、review 判定の成功と、依頼元 task の完了は別",
+            "非成功 verdict・failed・unknown・未解決の blocking/必須 finding を review 成功へ変換しない",
+            "返却証跡の保存・必須指摘の対応・残りの完了条件は依頼元が担う",
+            "その review-only handoff 自体に追加の role review を要求せず",
+            "reviewer が実装・修正まで行った場合はこの例外の対象外",
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, POLICY)
+
+    def test_review_success_allows_only_explicitly_nonblocking_notes(self):
+        for clause in (
+            "policy 定義の accepting terminal",
+            "明示的な nonblocking notes だけであれば review 成功を維持する",
+            "必須 finding を自己判断で nonblocking に格下げしてはならない",
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, POLICY)
+
+    def test_review_examples_distinguish_notes_and_required_failures(self):
+        cases = {
+            "accepting + nonblocking notes": "success",
+            "accepting + unresolved mandatory finding": "不通過",
+            "accepting + unresolved blocking finding": "不通過",
+            "failed": "不通過",
+            "unknown": "不通過",
+            "non_accepting verdict": "不通過",
+        }
+        for case, outcome in cases.items():
+            with self.subTest(case=case):
+                self.assertIn("| `" + case + "` | " + outcome + " |", POLICY)
+
+
 class ReceiptContractTests(unittest.TestCase):
     def test_checkpoint_review_receipt_does_not_change_the_reviewed_tree(self):
         for clause in (

@@ -72,10 +72,39 @@
 - `DEV_ROOT` 配下のリポジトリに変更が生じる作業は、PR を process の成果物に含める
 - PR を成果物に含めることが必須または承認済みの process では、作業を中断してユーザーに質問または確認すべき事項がない場合、レビュー通過後の commit、push、PR 作成まで自律的に進め、中間報告のために停止しない
 
+### 完了段階の記録
+
+- task record では次の段階をそれぞれ `pending`・`success`・`failed`・`unknown`・`not_required` と根拠で記録する。段階の成功を他段階へ転記せず、対象 repository・task・現在の成果物 identity と実証跡を対応付ける
+
+| 段階 | success を支える証拠 |
+|---|---|
+| `artifact` | 承認済み scope の全成果物と受け入れ条件を確認した結果 |
+| `validation` | 対象 identity に一致する focused/full validation の実成功 |
+| `review` | 対象 identity に一致する必須の独立 review の成功と必須指摘の解消 |
+| `evidence` | canonical Vault への耐久保存と read-back。Git 管理時は有限 checkpoint 手順も確認 |
+| `commit` | task-owned 差分と immutable commit の一致、task-owned clean と除外変更の保存確認 |
+| `publication` | remote head の一致と必要な PR の実作成。commit 済みだけでは成功にしない |
+| `merge` | 有効な merge gate と実 merge SHA の統合後検証。PR 作成は成功の証拠にしない |
+| `release` | 別途許可された release gate と配布先の実結果。merge は release の許可・成功を意味しない |
+
+- 必須段階の一つでも pending・failed・unknown なら task complete にしない。review 待ち・evidence 保存待ちを artifact 完成で代替しない。PR 作成済みを merge 済み、merge 済みを release 済みと扱わない。未達条件と次の担当・手順を残す
+- not_required は承認済み scope と適用 policy の根拠を明記できる場合だけ使用する。必須 gate を not_required に変更してはならない。未許可の release を実行せず、後工程を省略する許可や未達要件の除外を暗黙に導かない。元の依頼に残る必須作業があれば task 全体は未完了とする
+
 ## 品質担保（レビューと evidence）
 
 - 作業を実施したら、完了または PR 公開の前に、Saihai リポジトリの `organization/roles/` から成果物の領域とリスクに適した role を選び、その定義に従う別エージェントにレビューを依頼する。必要な専門領域が複数ある場合は各 role に委譲する
 - 上記の role review を担当する独立 reviewer の review-only handoff は、レビュー evidence を依頼元へ返した時点で reviewer の作業として完了とする。依頼元は元 task の完了または PR 公開前に、その evidence を Vault の task record へ記録する。その review-only handoff 自体に追加の role review を要求せず、再帰的な review chain を作らない。reviewer が実装・修正まで行った場合はこの例外の対象外とする
+- review-only の返却処理の終端と、review 判定の成功と、依頼元 task の完了は別の状態とする。非成功 verdict・failed・unknown・未解決の blocking/必須 finding を review 成功へ変換しない。policy 定義の accepting terminal で、付随する指摘が明示的な nonblocking notes だけであれば review 成功を維持する。必須 finding を自己判断で nonblocking に格下げしてはならない。返却証跡の保存・必須指摘の対応・残りの完了条件は依頼元が担う。結果未受領・保存未確認のまま依頼元の review/evidence 段階を成功にしない
+
+| 現対象への必須 review の返却例 | review 段階の判定 |
+|---|---|
+| `accepting + nonblocking notes` | success |
+| `accepting + unresolved mandatory finding` | 不通過 |
+| `accepting + unresolved blocking finding` | 不通過 |
+| `failed` | 不通過 |
+| `unknown` | 不通過 |
+| `non_accepting verdict` | 不通過 |
+
 - レビュー指摘への対応は、承認済み scope 内の修正であれば `thread` の実行ループに従って自律的に反復する。要件、設計、権限、方針の変更を伴う場合は、修正方針をユーザーと合意してから実装する
 - 主要な判断・検証結果と、選択した role、レビュー結果、指摘対応は evidence（実行ログ、リンク、差分など）付きで Vault の task record に残す
 - 軽微な定型作業（コミット、プル、バージョン確認など）も `thread` の実行ループ、着手前の task 登録、完了前の role review、evidence 記録を省略しない。記録と handoff は、必要な証跡を保ったまま作業規模に応じて軽量化してよい
