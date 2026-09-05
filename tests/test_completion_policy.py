@@ -1,6 +1,9 @@
 """COMMON contract regressions and executable examples, not Saihai runtime tests."""
 
 import os
+import json
+import hashlib
+import copy
 from pathlib import Path
 import subprocess
 import tempfile
@@ -54,6 +57,52 @@ class OwnershipContractTests(unittest.TestCase):
             "force push は禁止",
             "default branch（main）への直 push は禁止",
             "merge ≠ release",
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, POLICY)
+
+
+class ReceiptContractTests(unittest.TestCase):
+    def test_checkpoint_review_receipt_does_not_change_the_reviewed_tree(self):
+        for clause in (
+            "canonical Vault の Git commit message",
+            "bounded evidence envelope",
+            "task record evidence の一部",
+            "本文へ追記せず",
+            "exact parsing",
+            "最大 16 KiB",
+            "新しい authorization",
+            "private temporary file だけを参照してはならない",
+            "review-of-review を要求しない",
+            "source repository と checkpoint を保存する Vault repository",
+            "source commit を Vault checkpoint の親とみなしてはならない",
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, POLICY)
+
+    def test_checkpoint_is_a_finite_exception_to_own_sha_recording(self):
+        self.assertIn("checkpoint 自身の SHA は同じ hashed content へ追記しない", POLICY)
+        self.assertIn("自身の SHA 記録だけを目的とする追加 commit を作らない", POLICY)
+        self.assertIn("各コミット（後述の evidence checkpoint 自身の SHA を除く）", POLICY)
+
+    def test_checkpoint_binds_receipts_to_task_and_immutable_git_objects(self):
+        for clause in (
+            "一意な checkpoint ID",
+            "task ID・repository・source commit SHA",
+            "base/tree/diff identity",
+            "commit message にも checkpoint ID",
+            "immutable Git object",
+            "read-back",
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, POLICY)
+
+    def test_resume_is_verified_and_does_not_generate_recursive_evidence(self):
+        for clause in (
+            "再開時は同じ checkpoint ID",
+            "欠落・複数候補・identity 不一致・保存失敗",
+            "evidence 保存済みと報告しない",
+            "検証・独立レビューを省略する例外ではない",
         ):
             with self.subTest(clause=clause):
                 self.assertIn(clause, POLICY)
@@ -118,6 +167,164 @@ class IsolatedGitExample(unittest.TestCase):
         self.assertEqual(
             b"task.md\n", self.git("diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD")
         )
+
+    def checkpoint_fixture(self, change=None, omit=False):
+        """Synthetic review receipts exercise storage, never certify a real review."""
+        self.source_temp = tempfile.TemporaryDirectory(prefix="dotfiles-source-")
+        self.addCleanup(self.source_temp.cleanup)
+        self.source_repo = Path(self.source_temp.name)
+        self.source_git("init", "-q")
+        (self.source_repo / "source.md").write_text("accepted artifact\n")
+        self.source_git("add", "source.md")
+        self.source_git("commit", "-qm", "Source result")
+        source_sha = self.source_git("rev-parse", "HEAD").decode().strip()
+        self.write("vault.md", "Canonical fixture vault\n")
+        self.git("add", "vault.md")
+        self.git("commit", "-qm", "Vault baseline")
+        vault_base = self.git("rev-parse", "HEAD").decode().strip()
+        self.assertNotEqual(source_sha, vault_base)
+        checkpoint_id = "fixture-task-12-receipt-1"
+        receipt = {
+            "task_id": "fixture-task-12",
+            "repository": "fixture-source",
+            "source_commit": source_sha,
+            "checkpoint_id": checkpoint_id,
+            "source_tree": self.source_git("rev-parse", "HEAD^{tree}").decode().strip(),
+            "checkpoint_evidence": "Read the exact Evidence-Envelope JSON from the commit message; verify against the trusted handoff.",
+        }
+        self.write("task-record.json", json.dumps(receipt, sort_keys=True) + "\n")
+        self.write("raw-evidence.txt", "Synthetic canonical fixture log and review provenance\n")
+        self.git("add", "task-record.json", "raw-evidence.txt")
+        intended_tree = self.git("write-tree").decode().strip()
+        diff_digest = hashlib.sha256(self.git("diff", "--cached", "--binary", "--full-index")).hexdigest()
+        # This trusted expected receipt stands for the caller's fixed handoff;
+        # read-back must not use message-supplied identities as its own authority.
+        expected = {
+            "checkpoint_id": checkpoint_id, "task_id": receipt["task_id"],
+            "repository": "fixture-vault", "base": vault_base,
+            "source_repository": receipt["repository"],
+            "source_commit": source_sha, "source_tree": receipt["source_tree"],
+            "tree": intended_tree, "diff_sha256": diff_digest,
+            "owned_paths": ["raw-evidence.txt", "task-record.json"],
+            "validation": [{"command": "fixture focused/full", "start": "2026-09-05T00:00:00Z", "end": "2026-09-05T00:00:01Z", "exit": 0, "tests": 1, "skipped": 0, "result": "success"}],
+            "reviews": [{"role": "fixture-independent-reviewer", "version": "fixture-v1", "result": "accepting_terminal_success", "provenance": "raw-evidence.txt"}],
+            "references": [{"path": "raw-evidence.txt", "sha256": hashlib.sha256((self.repo / "raw-evidence.txt").read_bytes()).hexdigest()}],
+        }
+        actual = copy.deepcopy(expected)
+        if change:
+            change(actual)
+        message = "Evidence checkpoint\n\nCheckpoint-ID: " + checkpoint_id
+        if not omit:
+            message += "\nEvidence-Envelope: " + json.dumps(actual, sort_keys=True)
+        self.git("commit", "-qm", message)
+        return expected, receipt
+
+    def source_git(self, *args):
+        return subprocess.check_output(
+            ["git", *args], cwd=self.source_repo, env=self.env, stderr=subprocess.STDOUT
+        )
+
+    def read_checkpoint(self, expected):
+        """Test-only conformance procedure, not a production completion gate."""
+        candidates = []
+        for sha in self.git("rev-list", "--all").decode().splitlines():
+            message = self.git("show", "-s", "--format=%B", sha).decode()
+            ids = [line.removeprefix("Checkpoint-ID: ") for line in message.splitlines() if line.startswith("Checkpoint-ID: ")]
+            if expected["checkpoint_id"] not in ids:
+                continue
+            self.assertEqual([expected["checkpoint_id"]], ids)
+            envelopes = [line.removeprefix("Evidence-Envelope: ") for line in message.splitlines() if line.startswith("Evidence-Envelope: ")]
+            self.assertEqual(1, len(envelopes))
+            self.assertLessEqual(len(envelopes[0].encode()), 16 * 1024)
+
+            def unique_keys(pairs):
+                result = {}
+                for key, value in pairs:
+                    self.assertNotIn(key, result)
+                    result[key] = value
+                return result
+
+            envelope = json.loads(envelopes[0], object_pairs_hook=unique_keys)
+            self.assertEqual(expected, envelope)
+            self.assertTrue(envelope["validation"])
+            self.assertTrue(envelope["reviews"])
+            for validation in envelope["validation"]:
+                self.assertEqual("success", validation["result"])
+                self.assertEqual(0, validation["exit"])
+                self.assertGreater(validation["tests"], 0)
+                self.assertEqual(0, validation["skipped"])
+            for review in envelope["reviews"]:
+                self.assertEqual("accepting_terminal_success", review["result"])
+            self.assertEqual(expected["base"], self.git("rev-parse", sha + "^").decode().strip())
+            source_receipt = json.loads(self.git("show", sha + ":task-record.json"))
+            self.assertEqual(expected["source_repository"], source_receipt["repository"])
+            self.assertEqual(expected["source_commit"], source_receipt["source_commit"])
+            self.assertEqual(expected["source_tree"], source_receipt["source_tree"])
+            self.assertEqual(expected["source_tree"], self.source_git("rev-parse", expected["source_commit"] + "^{tree}").decode().strip())
+            self.assertEqual(expected["tree"], self.git("rev-parse", sha + "^{tree}").decode().strip())
+            self.assertEqual(expected["diff_sha256"], hashlib.sha256(self.git("diff", "--binary", "--full-index", expected["base"], sha)).hexdigest())
+            self.assertEqual(expected["owned_paths"], self.git("diff", "--name-only", expected["base"], sha).decode().splitlines())
+            for ref in envelope["references"]:
+                self.assertEqual(ref["sha256"], hashlib.sha256(self.git("show", sha + ":" + ref["path"])).hexdigest())
+            candidates.append(sha)
+        self.assertEqual(1, len(candidates))
+        return candidates[0]
+
+    def test_evidence_checkpoint_readback_and_resume_need_no_self_sha_commit(self):
+        expected, receipt = self.checkpoint_fixture()
+        count = self.git("rev-list", "--count", "HEAD")
+
+        for _ in range(2):
+            checkpoint_sha = self.read_checkpoint(expected)
+            data = self.git("show", checkpoint_sha + ":task-record.json")
+            self.assertEqual(receipt, json.loads(data))
+            self.assertNotIn(checkpoint_sha.encode(), data)
+            self.assertEqual(count, self.git("rev-list", "--count", "HEAD"))
+            self.assertEqual(b"", self.git("status", "--porcelain"))
+        self.assertEqual(b"2\n", count)
+
+    def test_checkpoint_rejects_tampered_review_receipt(self):
+        expected, _ = self.checkpoint_fixture(lambda e: e["reviews"][0].update(version="tampered"))
+        with self.assertRaises(AssertionError):
+            self.read_checkpoint(expected)
+
+    def test_checkpoint_rejects_missing_envelope(self):
+        expected, _ = self.checkpoint_fixture(omit=True)
+        with self.assertRaises(AssertionError):
+            self.read_checkpoint(expected)
+
+    def test_checkpoint_rejects_duplicate_exact_id(self):
+        expected, _ = self.checkpoint_fixture()
+        message = self.git("show", "-s", "--format=%B", "HEAD").decode()
+        # A second valid candidate with the same parent and tree but different
+        # message is reachable; uniqueness must not depend on latest-first grep.
+        other = self.git("commit-tree", expected["tree"], "-p", expected["base"], "-m", "Duplicate\n" + message).decode().strip()
+        self.git("update-ref", "refs/heads/duplicate-fixture", other)
+        with self.assertRaises(AssertionError):
+            self.read_checkpoint(expected)
+
+    def test_checkpoint_rejects_pending_review(self):
+        expected, _ = self.checkpoint_fixture(lambda e: e["reviews"][0].update(result="pending"))
+        with self.assertRaises(AssertionError):
+            self.read_checkpoint(expected)
+
+    def test_checkpoint_rejects_failed_validation_even_if_handoff_agrees(self):
+        expected, _ = self.checkpoint_fixture(lambda e: e["validation"][0].update(result="failed", exit=1))
+        expected["validation"][0].update(result="failed", exit=1)
+        with self.assertRaises(AssertionError):
+            self.read_checkpoint(expected)
+
+    def test_checkpoint_rejects_unknown_review_even_if_handoff_agrees(self):
+        expected, _ = self.checkpoint_fixture(lambda e: e["reviews"][0].update(result="unknown"))
+        expected["reviews"][0].update(result="unknown")
+        with self.assertRaises(AssertionError):
+            self.read_checkpoint(expected)
+
+    def test_checkpoint_rejects_missing_review_even_if_handoff_agrees(self):
+        expected, _ = self.checkpoint_fixture(lambda e: e.update(reviews=[]))
+        expected["reviews"] = []
+        with self.assertRaises(AssertionError):
+            self.read_checkpoint(expected)
 
 
 if __name__ == "__main__":

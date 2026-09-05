@@ -108,11 +108,23 @@
 - 同一の独立した修正が複数の review thread を不可分に解消する場合に限り、前項の例外として一つのコミットにまとめてもよい。この場合は、対象の thread ID と分割できない理由を task record と commit message に記録する
 - タスクを Issue やサブタスクなどに細分化した場合は、細分化したタスクごとにコミットを分け、複数タスクの変更を同一コミットに混在させない
 - 複数タスクに共通する prerequisite は、独立して説明・検証・revert できるなら独立したコミットにし、依存順を task record に記録する。個別コミットが build 不能または revert 不能になる不可分な依存タスクに限り、前項の例外として一つのコミットにまとめてもよい。この場合は、対象タスクと依存理由を task record と commit message に記録する
-- 各コミットは、task ID、対応する review thread がある場合はその thread ID、検証結果、commit SHA を task record に必ず記録する。必要に応じて、push 後の review reply に commit SHA を記載して追跡可能にする
+- 各コミット（後述の evidence checkpoint 自身の SHA を除く）は、task ID、対応する review thread がある場合はその thread ID、検証結果、commit SHA を task record に必ず記録する。必要に応じて、push 後の review reply に commit SHA を記載して追跡可能にする
 - default branch（main）への直 push は禁止（ruleset で保護済み）。変更は PR 経由とし、codex review / CodeRabbit などのレビューを受けてからマージする
 - force push は禁止
 - main への merge とリリースは別の gate として扱う（merge ≠ release）
 - リポジトリの public 化・公開の前には、tracked file だけでなく commit history に含まれる個人情報・シークレットも scan する。汚染がある場合は新規リポジトリへの移行を検討する
+
+### Git 管理された task record の有限な証跡記録
+
+- source commit 後、その receipt を task record に保存する。receipt には task ID・repository・source commit SHA、対象 path、検証・レビュー証跡、検証時の base/tree/diff identity と commit 後の一致確認を含める。共有 Vault の記録は指定された writer が直列化し、worker の返却だけで保存済みとは扱わない
+- source repository と checkpoint を保存する Vault repository は別の identity として固定する。source SHA/receipt は source 側で検証し、checkpoint の base/親 commit/tree/diff は Vault 側で検証する。source commit を Vault checkpoint の親とみなしてはならない
+- task record の保存変更を evidence checkpoint として commit する。事前に一意な checkpoint ID、対象 task、commit message からの証跡取得・照合手順を本文に固定し、commit message にも checkpoint ID を記録する。checkpoint に含める path・内容と base/tree/diff identity を凍結してから focused/full validation と独立 role review を実施する。この手順は checkpoint の検証・独立レビューを省略する例外ではない
+- この checkpoint に限り、canonical Vault の Git commit message に格納する bounded evidence envelope を task record evidence の一部とする。確定した checkpoint 自身の検証・review 結果は本文へ追記せず、同じ commit message に忠実に保存してレビュー対象 tree を保持する。review-only handoff の返却証跡の保存には既存の非再帰例外を適用し、review-of-review を要求しない。結果の改変、検証失敗、review 未了をこの例外で通過させてはならない
+- envelope は最大 16 KiB の UTF-8 JSON とし、`Checkpoint-ID: <ID>` 行と `Evidence-Envelope: <JSON>` 行をそれぞれ一つ記録する。JSON には checkpoint/task/repository、base/tree/diff identity、owned paths、検証 command・開始/終了時刻・終了状態・結果・test/skip 数、reviewer role/version/result と既存の provider/model/request/session 等の provenance 参照を保存する。大きな raw log や provenance は、当該 canonical Vault に耐久保存済みの証跡だけを path/object identity と content digest で参照する。未保存の結果や private temporary file だけを参照してはならない。サイズ超過を理由に必須項目を切り捨てない
+- checkpoint 自身の SHA は同じ hashed content へ追記しない。checkpoint ID に対応する immutable Git object を特定し、その SHA・親 commit・tree・diff・owned paths・保存された task record/receipt/envelope と参照証跡を、依頼元の固定済み identity・実検証結果・実 reviewer 結果と read-back で照合する。ID は部分一致検索で確定せず、message の exact parsing と一意な候補を要求し、行や JSON key の重複・不正形式も拒否する。envelope は新しい authorization を発行せず、自己申告だけをレビュー成功の根拠にしない
+- checkpoint 自身の SHA はこの Git object を根拠とし、自身の SHA 記録だけを目的とする追加 commit を作らない。照合結果は依頼元へ返し、task record に記載した checkpoint ID と照合手順から再確認できるようにする。検証の未実行・failed・unknown・0 test・skipped、必須 review の pending・failed・unknown、receipt や参照証跡の欠落は不通過とする
+- 再開時は同じ checkpoint ID から既存 object と receipt を読み直し、一致を確認して続ける。欠落・複数候補・identity 不一致・保存失敗では停止し、evidence 保存済みと報告しない。単なる再開や read-back は新しい checkpoint を要求しない。内容修正や新しい実作業の証跡が必要になった場合は別の意味単位として検証・レビュー・記録し、自己 SHA の追記再帰と区別する
+- source commit、checkpoint 保存、push は別々に確認する。push が必要な task では該当 remote object との一致も確認し、local read-back だけで公開済みと扱わない。Vault の main 直接 commit/push 例外は両 Vault 配下だけに適用し、source repository へ拡張しない
 
 ## 運用
 
