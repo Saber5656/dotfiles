@@ -14,164 +14,118 @@ ROOT = Path(__file__).resolve().parents[1]
 POLICY = (ROOT / "COMMON-AGENTS.md").read_text(encoding="utf-8")
 
 
-class OwnershipContractTests(unittest.TestCase):
-    def test_cleanliness_is_scoped_at_both_existing_entrypoints(self):
-        self.assertNotIn("完了を宣言する前に、未コミット差分がないこと", POLICY)
-        self.assertNotIn("作業終了時に未コミット差分を残さない", POLICY)
-        self.assertIn("task-owned な未コミット差分がないこと", POLICY)
-        self.assertIn("task-owned な未コミット差分を残さない", POLICY)
+class UsageFirstContractTests(unittest.TestCase):
+    """Document-contract checks; executable historical Git examples remain below."""
 
-    def test_ownership_must_be_fixed_before_changes_and_rechecked(self):
+    def test_real_delivery_not_issue_exhaustion_is_the_objective(self):
         for clause in (
-            "着手前に task-owned の範囲",
-            "path・hunk",
-            "staged・unstaged・untracked",
-            "開始時と終了時",
-            "内容・mode・diff identity",
-            "所有者が不明",
+            "実タスクをハーネスで受け付け",
+            "全 Issue の完遂やハーネス全体の完成を通常作業の前提・目的にしない",
+            "Issue と PR の一対一対応は必須にしない",
+            "関連する複数 Issue を一つの機能 PR にまとめてよい",
         ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, POLICY)
+            self.assertIn(clause, POLICY)
 
-    def test_exclusion_cannot_hide_task_changes_or_discard_others_work(self):
+    def test_review_is_limited_and_never_duplicated(self):
         for clause in (
+            "review を必要とするのは権限拡大・認証/secret・データ消失に関わる変更だけ",
+            "その範囲に適した担当で一回",
+            "内部 review と PR review を重複させない",
+            "初回→妥当な指摘の修正→元指摘の解消確認→merge",
+            "修正後の全面再 review・review-of-review・再帰 review を行わない",
+            "軽微な改善は後続 Issue に移してよい",
+            "未解決の権限・認証/secret・データ消失リスクを軽微として除外しない",
+        ):
+            self.assertIn(clause, POLICY)
+
+    def test_bot_switch_requires_quota(self):
+        self.assertIn("quota に到達したときだけ ChatGPT review へ切り替える", POLICY)
+        self.assertIn("通常併用・二重 trigger はしない", POLICY)
+        self.assertIn("quota 以外の障害を切替理由にせず", POLICY)
+
+    def test_full_validation_is_per_integrated_change(self):
+        for clause in (
+            "修正中は影響範囲の focused validation",
+            "full validation は統合変更一式に対して一回",
+            "個別 commit ごとの full validation は要求しない",
+            "影響を受けない検証結果は再利用",
+            "影響した範囲だけを再検証",
+        ):
+            self.assertIn(clause, POLICY)
+
+    def test_ci_drives_autonomous_pr_merge_without_bypass(self):
+        for clause in (
+            "必要 CI が成功したら、通常 review・CodeRabbit・追加承認を待たず自律的に PR を merge",
+            "指定 head を条件に通常の GitHub PR merge",
+            "現在のサーバー側保護を bypass せず",
+            "必要 CI の failed・missing・pending・unknown を成功と扱わない",
+            "default branch（main）への直 push は禁止",
+            "force push は禁止",
+        ):
+            self.assertIn(clause, POLICY)
+
+    def test_conflicts_preserve_intent_and_only_requirements_need_questions(self):
+        for clause in (
+            "競合は双方の意図を保持して自動解消",
+            "解消箇所と影響範囲を検証",
+            "ours/theirs で一方を無条件に捨てない",
+            "質問は両立できない要件選択が必要な場合だけ",
+        ):
+            self.assertIn(clause, POLICY)
+
+    def test_task_owned_cleanliness_and_excluded_changes_are_preserved(self):
+        for clause in (
+            "task-owned な未コミット差分がないこと",
+            "task-owned な未コミット差分を残さない",
+            "着手前に task-owned の範囲",
+            "path・hunk", "staged・unstaged・untracked",
+            "開始時と終了時", "内容・mode・diff identity",
             "task-owned の変更を無関係として除外してはならない",
             "無関係な変更を commit・stash・reset・削除しない",
-            "無関係な dirty が残っていても",
+            "確認できない他者差分は取り込まず保持",
         ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, POLICY)
+            self.assertIn(clause, POLICY)
 
-    def test_unsafe_ownership_conditions_require_stopping_commit_and_completion(self):
-        self.assertIn(
-            "所有者が不明、同じ hunk を安全に分離できない、"
-            "または除外した変更に drift がある場合は、"
-            "影響する commit・完了判定を停止して所有者との調整へ戻す。",
-            POLICY,
-        )
-
-    def test_existing_validation_and_authority_gates_remain(self):
+    def test_records_are_lightweight_and_checkpoint_is_finite(self):
         for clause in (
-            "focused validation と repository 所定の full validation",
-            "作業を担当していない別のエージェント",
-            "force push は禁止",
-            "default branch（main）への直 push は禁止",
-            "merge ≠ release",
-        ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, POLICY)
-
-
-class CompletionStateContractTests(unittest.TestCase):
-    def test_every_completion_stage_has_its_own_evidence_condition(self):
-        rows = {
-            "artifact": "承認済み scope の全成果物と受け入れ条件",
-            "validation": "対象 identity に一致する focused/full validation",
-            "review": "対象 identity に一致する必須の独立 review",
-            "evidence": "canonical Vault への耐久保存と read-back",
-            "commit": "task-owned 差分と immutable commit の一致",
-            "publication": "remote head の一致と必要な PR の実作成",
-            "merge": "有効な merge gate と実 merge SHA の統合後検証",
-            "release": "別途許可された release gate と配布先の実結果",
-        }
-        for stage, evidence in rows.items():
-            with self.subTest(stage=stage):
-                matches = [line for line in POLICY.splitlines() if line.startswith("| `" + stage + "` |")]
-                self.assertEqual(1, len(matches))
-                self.assertIn(evidence, matches[0])
-
-    def test_pending_review_or_evidence_blocks_parent_completion(self):
-        for clause in (
-            "必須段階の一つでも pending・failed・unknown なら task complete にしない",
-            "review 待ち・evidence 保存待ちを artifact 完成で代替しない",
-            "PR 作成済みを merge 済み、merge 済みを release 済みと扱わない",
-        ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, POLICY)
-
-    def test_not_required_needs_scope_and_no_waiver_inference(self):
-        self.assertIn("not_required は承認済み scope と適用 policy の根拠", POLICY)
-        self.assertIn("必須 gate を not_required に変更してはならない", POLICY)
-        self.assertIn("後工程を省略する許可や未達要件の除外を暗黙に導かない", POLICY)
-
-    def test_review_only_transport_terminal_is_not_review_or_parent_success(self):
-        for clause in (
-            "review-only の返却処理の終端と、review 判定の成功と、依頼元 task の完了は別",
-            "非成功 verdict・failed・unknown・未解決の blocking/必須 finding を review 成功へ変換しない",
-            "返却証跡の保存・必須指摘の対応・残りの完了条件は依頼元が担う",
-            "その review-only handoff 自体に追加の role review を要求せず",
-            "reviewer が実装・修正まで行った場合はこの例外の対象外",
-        ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, POLICY)
-
-    def test_review_success_allows_only_explicitly_nonblocking_notes(self):
-        for clause in (
-            "policy 定義の accepting terminal",
-            "明示的な nonblocking notes だけであれば review 成功を維持する",
-            "必須 finding を自己判断で nonblocking に格下げしてはならない",
-        ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, POLICY)
-
-    def test_review_examples_distinguish_notes_and_required_failures(self):
-        cases = {
-            "accepting + nonblocking notes": "success",
-            "accepting + unresolved mandatory finding": "不通過",
-            "accepting + unresolved blocking finding": "不通過",
-            "failed": "不通過",
-            "unknown": "不通過",
-            "non_accepting verdict": "不通過",
-        }
-        for case, outcome in cases.items():
-            with self.subTest(case=case):
-                self.assertIn("| `" + case + "` | " + outcome + " |", POLICY)
-
-
-class ReceiptContractTests(unittest.TestCase):
-    def test_checkpoint_review_receipt_does_not_change_the_reviewed_tree(self):
-        for clause in (
-            "canonical Vault の Git commit message",
-            "bounded evidence envelope",
-            "task record evidence の一部",
-            "本文へ追記せず",
-            "exact parsing",
-            "最大 16 KiB",
-            "新しい authorization",
-            "private temporary file だけを参照してはならない",
-            "review-of-review を要求しない",
-            "source repository と checkpoint を保存する Vault repository",
+            "目的・主要判断・検証結果・制限・成果物リンクだけ",
+            "記録 commit に review や source の full validation を要求しない",
+            "checkpoint 自身の SHA は同じ hashed content へ追記しない",
+            "自身の SHA 記録だけを目的とする追加 commit を作らない",
             "source commit を Vault checkpoint の親とみなしてはならない",
+            "既存の checkpoint ID・bounded evidence envelope・過去の review 証跡は保持",
+            "過去の厳密形式の作成や review を新規記録の必須条件にはしない",
         ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, POLICY)
+            self.assertIn(clause, POLICY)
 
-    def test_checkpoint_is_a_finite_exception_to_own_sha_recording(self):
-        self.assertIn("checkpoint 自身の SHA は同じ hashed content へ追記しない", POLICY)
-        self.assertIn("自身の SHA 記録だけを目的とする追加 commit を作らない", POLICY)
-        self.assertIn("各コミット（後述の evidence checkpoint 自身の SHA を除く）", POLICY)
+    def test_retry_budget_is_consecutive_same_cause_only(self):
+        self.assertIn("同じ未解決原因への連続 retry だけを数え", POLICY)
+        self.assertIn("過去の文書修正・環境復旧・累積 review 回数を合算して停止しない", POLICY)
+        self.assertIn("連続 retry の回数を偽ってリセットしない", POLICY)
 
-    def test_checkpoint_binds_receipts_to_task_and_immutable_git_objects(self):
-        for clause in (
-            "一意な checkpoint ID",
-            "task ID・repository・source commit SHA",
-            "base/tree/diff identity",
-            "commit message にも checkpoint ID",
-            "immutable Git object",
-            "read-back",
-        ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, POLICY)
+    def test_bootstrap_does_not_gate_normal_work_on_review_facade(self):
+        self.assertIn("environ=env, require_catalog=True", POLICY)
+        self.assertIn("通常作業は role 定義や正式 review facade の復旧を待たない", POLICY)
+        self.assertIn("別 Vault の作成やパスの付け替えを行わず停止", POLICY)
 
-    def test_resume_is_verified_and_does_not_generate_recursive_evidence(self):
-        for clause in (
-            "再開時は同じ checkpoint ID",
-            "欠落・複数候補・identity 不一致・保存失敗",
-            "evidence 保存済みと報告しない",
+    def test_completion_and_safety_are_not_false_success(self):
+        for stage in ("artifact", "validation", "review", "evidence", "commit", "publication", "merge", "release"):
+            self.assertEqual(1, sum(line.startswith("| `" + stage + "` |") for line in POLICY.splitlines()))
+        self.assertIn("通常は not_required", POLICY)
+        self.assertIn("merge ≠ release", POLICY)
+        self.assertIn("既存の成果物・設計ドキュメント・ファイルは、ユーザーの明示的な依頼なしに削除しない", POLICY)
+        self.assertIn("鍵・シークレット・認証情報の生成・設定・登録はユーザーが手動で行う", POLICY)
+
+    def test_obsolete_global_gates_are_not_active(self):
+        for old in (
+            "1 task を 1 process、かつ 1 Issue",
+            "指摘が解消されレビューを通過した場合に限り",
+            "完了前の role review、evidence 記録を省略しない",
+            "one-time gate-state digest を mutation の atomic precondition",
+            "必要な再 review を要求",
             "検証・独立レビューを省略する例外ではない",
         ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, POLICY)
+            self.assertNotIn(old, POLICY)
 
 
 class IsolatedGitExample(unittest.TestCase):
