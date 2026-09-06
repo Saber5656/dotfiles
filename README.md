@@ -44,6 +44,29 @@ Claude と Codex に実際に読ませる runtime instructions の SSOT は `COM
 
 Claude/Codex の振る舞いを変えたいときは `COMMON-AGENTS.md` を直接編集する。
 
+### primary checkout に別作業がある場合の配布
+
+source の正本はこの repository の main 上の `COMMON-AGENTS.md` とする。
+通常は上記 symlink で読み込む。primary に別 branch や未コミット変更がある場合は、
+primary を checkout・reset・stash せず、マージ済み commit の COMMON だけを
+バージョン付き配布先へ取り出して利用できる。
+
+1. 配布する merge SHA と COMMON の blob/digest を固定する。
+2. `git show <merge-SHA>:COMMON-AGENTS.md` で内容を取得し、Git 管理外の
+   `~/.codex/policy-releases/dotfiles/<merge-SHA>/COMMON-AGENTS.md` に保存する。
+   既存ファイルがあれば上書きせず内容一致を確認する。
+3. `~/.codex/AGENTS.md` と `~/.claude/CLAUDE.md` の現在の symlink 先を記録する。
+   実ファイルや予期しない変更があれば上書きせず、その差分を保持する。
+4. 両リンクが確認した preimage のままであることを再確認し、同一ディレクトリの
+   一時 symlink から rename して、配布先へ一つずつ切り替える。
+   複数リンクの切替は一括 atomic ではないため、途中失敗では成功したリンクを記録し、
+   今回設定した先から変わっていない場合だけ元のリンクへ戻す。
+5. 両入口の実読込先と内容 digest を確認し、配布 SHA・リンク・結果を簡潔に記録する。
+   既に動いている session への反映は推測せず、新しい task で読込を確認する。
+
+配布 copy は編集元にしない。次回も main の検証済み SHA から更新する。
+primary の別作業とその index は変更せず、過去の配布版も削除しない。
+
 ## セットアップ
 
 新しい環境でシンボリックリンクを張り直す場合は、上記の対応表を参照して `ln -s` で作成する。

@@ -19,10 +19,14 @@ GitHub's dynamic CodeQL workflow is remote-managed; its applicability and actual
 result must be inventoried separately before publication/merge, never inferred
 from these local tests. Existing validation and independent review gates remain.
 
-Before each behavior commit, run the focused and full commands, record actual
-start/end times, exit status, test counts, and logs against the exact intended
-tree/diff, and obtain independent review. Preserve a failing pre-change run for
-each new contract. After committing, verify the committed tree/diff matches the
-reviewed identity, or validate the immutable commit again. Repeat the inventory
-check before publishing a ready PR; changed workflow/profile/base invalidates
-affected evidence.
+During implementation, run focused checks for the affected behavior. Run the full
+local suite once for the integrated change set before publication, not for every
+commit. Record the tested content/commit, commands, results and limitations.
+Reuse unaffected evidence; repeat only checks affected by later changes.
+Ordinary changes and evidence-only commits do not require additional review.
+Permission expansion, authentication/secrets and data-loss changes receive one
+scoped review, followed only by verification of the original findings.
+
+The policy tests follow the usage-first operations contract. Historical isolated
+Git checkpoint examples remain as compatibility examples for existing evidence;
+their synthetic review receipts do not impose review on new evidence commits.
