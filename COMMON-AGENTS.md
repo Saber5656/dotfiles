@@ -29,6 +29,8 @@
 ## ハーネス受付とパスの確認
 
 - 実タスクをハーネスで受け付け、実装→検証→PR→main へ速やかに通す。実利用で見つかった不足を改善し、全 Issue の完遂やハーネス全体の完成を通常作業の前提・目的にしない
+- 通常開発の実入口は `python3.11 ~/dev/Saihai/scripts/saihai.py usage run --request <absolute-request.json> --authorization <absolute-authority.json> --state-root <absolute-private-state>` とする。host は承認済み task scope に基づく authority と request を用意し、authority と state を worker が書き込める範囲の外に置く。host による authority の構築は資格情報の生成ではなく、既存の credential・承認済み model・scope・権限をそのまま使う
+- CI 待ち・公開処理・merge 後 CI の再開には `python3.11 ~/dev/Saihai/scripts/saihai.py usage advance --authorization <absolute-authority.json> --state-root <absolute-private-state>` を使う。契約の正本は `~/dev/Saihai/organization/runtime/workflows/trusted-local-contract.md` とし、旧 managed broker や人間署名 activation の完成をこの通常経路の前提にしない。これは既存の scope・権限を拡張したり、managed-domain の隔離を証明したりするものではない
 - この文書で使用するパス変数はシェル環境変数から解決しない。Saihai primary checkout の `~/dev/Saihai/directory-path.env`（directory catalog）を唯一の source とし、loader の解決入力に空の mapping `env = {}` を渡して `directory_paths.load_environment(checkout_root=Path("~/dev/Saihai").expanduser(), environ=env, require_catalog=True)` を実行する。返却値の `status=loaded` を確認し、catalog から得た各パス変数を作業プロセスの環境へ反映してから、`AGENTS_VAULT_ROOT` の read/write 検証が成功したことを確認する
 - `directory-path.env` が存在しない場合だけ、既存の正本 Vault がほかに存在しないことと新しい正本パスを人間が確認し、人間が同ファイルを作成・更新してから fresh bootstrap を再実行する。catalog の読込・parse・検証に失敗した場合は bootstrap へ進まず、通常の調査・設計・実装・リポジトリ変更・公開作業も停止する
 - 既存の正本 Vault の有無を確認できない場合、または正本 Vault が存在するのに読み書きできない場合は bootstrap 例外を適用しない。別 Vault の作成やパスの付け替えを行わず停止し、人間または環境側の復旧を求める
