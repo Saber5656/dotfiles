@@ -104,9 +104,11 @@ class UsageFirstContractTests(unittest.TestCase):
         self.assertIn("連続 retry の回数を偽ってリセットしない", POLICY)
 
     def test_bootstrap_does_not_gate_normal_work_on_review_facade(self):
-        self.assertIn("environ=env, require_catalog=True", POLICY)
+        self.assertIn("environ={}", POLICY)
+        self.assertIn("require_catalog=True", POLICY)
+        self.assertIn("scripts/saihai.py startup", POLICY)
         self.assertIn("通常作業は role 定義や正式 review facade の復旧を待たない", POLICY)
-        self.assertIn("別 Vault の作成やパスの付け替えを行わず停止", POLICY)
+        self.assertIn("別 Vault の作成や catalog の付け替えで迂回しない", POLICY)
 
     def test_completion_and_safety_are_not_false_success(self):
         for stage in ("artifact", "validation", "review", "evidence", "commit", "publication", "merge", "release"):
