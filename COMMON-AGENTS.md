@@ -31,12 +31,23 @@
 - 実タスクをハーネスで受け付け、実装→検証→PR→main へ速やかに通す。実利用で見つかった不足を改善し、全 Issue の完遂やハーネス全体の完成を通常作業の前提・目的にしない
 - 通常開発の実入口は `python3.11 ~/dev/Saihai/scripts/saihai.py usage run --request <absolute-request.json> --authorization <absolute-authority.json> --state-root <absolute-private-state>` とする。host は承認済み task scope に基づく authority と request を用意し、authority と state を worker が書き込める範囲の外に置く。host による authority の構築は資格情報の生成ではなく、既存の credential・承認済み model・scope・権限をそのまま使う
 - CI 待ち・公開処理・merge 後 CI の再開には `python3.11 ~/dev/Saihai/scripts/saihai.py usage advance --authorization <absolute-authority.json> --state-root <absolute-private-state>` を使う。契約の正本は `~/dev/Saihai/organization/runtime/workflows/trusted-local-contract.md` とし、旧 managed broker や人間署名 activation の完成をこの通常経路の前提にしない。これは既存の scope・権限を拡張したり、managed-domain の隔離を証明したりするものではない
-- この文書で使用するパス変数はシェル環境変数から解決しない。Saihai primary checkout の `~/dev/Saihai/directory-path.env`（directory catalog）を唯一の source とし、loader の解決入力に空の mapping `env = {}` を渡して `directory_paths.load_environment(checkout_root=Path("~/dev/Saihai").expanduser(), environ=env, require_catalog=True)` を実行する。返却値の `status=loaded` を確認し、catalog から得た各パス変数を作業プロセスの環境へ反映してから、`AGENTS_VAULT_ROOT` の read/write 検証が成功したことを確認する
-- `directory-path.env` が存在しない場合だけ、既存の正本 Vault がほかに存在しないことと新しい正本パスを人間が確認し、人間が同ファイルを作成・更新してから fresh bootstrap を再実行する。catalog の読込・parse・検証に失敗した場合は bootstrap へ進まず、通常の調査・設計・実装・リポジトリ変更・公開作業も停止する
-- 既存の正本 Vault の有無を確認できない場合、または正本 Vault が存在するのに読み書きできない場合は bootstrap 例外を適用しない。別 Vault の作成やパスの付け替えを行わず停止し、人間または環境側の復旧を求める
-- Vault が書き込み可能になった直後に bootstrap 作業自体を task として登録し、それまでの操作、判断理由、検証結果を evidence として追記してから後続作業へ進む
-- role 定義の利用可否は後述の限定 review が必要な範囲にだけ影響する。通常作業は role 定義や正式 review facade の復旧を待たない。実際の起動・実行結果を確認し、受付記録だけで実行済みと報告しない
-- 必要な role の復旧では信頼済み取得元と immutable commit SHA を確認し、取得元・内容の不一致を成功として扱わない。復旧が必要な範囲だけを止め、安全に独立した通常作業は続ける。Vault を利用できない場合はパス・アクセスの復旧を先に行う
+- 起動・復旧時は `~/dev/Saihai/docs/runbooks/startup-recovery.md` を正本とする。host は task に記録された信頼済み取得元・immutable commit・task ID と実際の surface を指定して、次の診断を行う。`--checkout` は検証する Saihai checkout、`--role` は今回使用する role とする。診断は受付・実行権限の発行や実装の実行を代行しない
+
+  ```sh
+  python3.11 ~/dev/Saihai/scripts/saihai.py startup \
+    --checkout <absolute-Saihai-checkout> \
+    --expected-commit <approved-full-commit-SHA> \
+    --expected-origin <approved-source-URL> \
+    --role <selected-role> --execution-profile trusted_local_v1 \
+    --surface codex --task-id <registered-task-ID>
+  ```
+
+- パス変数はシェル環境を正本とせず、primary `~/dev/Saihai/directory-path.env` だけから解決する。診断は空の mapping `environ={}` と `require_catalog=True` で catalog を読み、catalog・正本 Vault の read/write・checkout の origin/commit/tree・選択 role の内容 digest を別々に確認する。checkout の dirty 表示や host の Vault アクセス成功を、無関係な差分の検証済み・sandbox 権限付与済みの証明としない
+- catalog の読込・parse・検証や正本 Vault のアクセスに失敗した場合は、通常作業へ進まず元のパス・アクセスを復旧する。別 Vault の作成や catalog の付け替えで迂回しない。catalog が存在しない場合も既存正本の有無と正しいパスを人間が確認し、人間による設定後に fresh 診断する。新しい資格情報・root 設定・host commissioning はこの手順に含めない
+- 診断の private audit 参照を保存する。元の Vault が復旧した後、bootstrap task が未登録なら、承認済みの `objective`・`scope`・`acceptance_criteria` を持つ JSON を `--bootstrap-brief <absolute-brief.json>` で指定する。既存 scaffold が task を非破壊で登録し、先行 audit の参照と digest を記録する。既存 task の上書きや private 記録だけでの共有完了扱いをしない
+- role 定義の利用可否は後述の限定 review が必要な範囲にだけ影響する。通常作業は role 定義や正式 review facade の復旧を待たない。選択 role の欠落・identity 不一致を診断成功へ変換せず、その role に依存する範囲だけを止める。必要な復旧は記録済みの信頼済み取得元と immutable commit に照合し、汎用 role への置換で成功を装わない
+- `trusted_local_v1` の診断成功は既存の host task authority に基づく通常経路の準備確認であり、正式 managed 隔離の証明ではない。既に commissioned の `legacy_managed` を使う場合だけ、その profile と `--profile-id`・`--principal-id`・`--workspace-id` を明示し、実際の親 process・supervisor・checkout・有効期限を持つ standard launch の検証を通す。未 commissioning や直接起動の診断結果を managed 実行成功と扱わず、通常の trusted-local 経路までその復旧待ちにしない
+- 実際の起動・実行結果を確認し、受付記録だけで実行済みと報告しない。この起動手順は通常 review の必須化・累積 retry 停止・追加承認待ち・release 許可を追加しない
 
 ## 言語
 
